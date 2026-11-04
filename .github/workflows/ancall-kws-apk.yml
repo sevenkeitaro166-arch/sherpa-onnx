@@ -1,0 +1,72 @@
+name: ANCALL Android KWS APK
+
+on:
+  push:
+    branches:
+      - ancall-wakeword
+  workflow_dispatch:
+
+concurrency:
+  group: ancall-kws-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-kws-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install build helper
+        run: |
+          python -m pip install --upgrade pip jinja2
+          sudo apt-get update
+          sudo apt-get install -y tree
+
+      - name: Check Android NDK
+        shell: bash
+        run: |
+          test -n "${ANDROID_NDK_LATEST_HOME}"
+          test -d "${ANDROID_NDK_LATEST_HOME}"
+          echo "Using Android NDK: ${ANDROID_NDK_LATEST_HOME}"
+          cmake --version
+          java -version
+
+      - name: Prepare release version
+        run: ./new-release.sh
+
+      - name: Build KWS APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mv scripts/apk/build-apk-kws.sh ./build-apk-kws.sh
+          chmod +x ./build-apk-kws.sh
+          export ANDROID_NDK="${ANDROID_NDK_LATEST_HOME}"
+          export SHERPA_ONNX_ENABLE_TTS=OFF
+          export SHERPA_ONNX_ENABLE_SPEAKER_DIARIZATION=OFF
+          ./build-apk-kws.sh
+
+      - name: Upload unsigned APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: ancall-sherpa-kws-unsigned-apks
+          path: apks/*.apk
+          if-no-files-found: error
+          retention-days: 14
