@@ -38,10 +38,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (intent?.action == ACTION_RESUME_FROM_TERMUX) {
+        if (intent.action == ACTION_RESUME_FROM_TERMUX) {
             if (hasRequiredPermissions()) startListener() else requestAudioPermissions()
         }
     }
