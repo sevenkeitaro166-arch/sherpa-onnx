@@ -1,13 +1,13 @@
-name: ANCALL Android KWS APK
+name: ANCALL Next Android APK
 
 on:
   push:
     branches:
-      - ancall-wakeword
+      - ancall-next-diagnostic
   workflow_dispatch:
 
 concurrency:
-  group: ancall-kws-apk-${{ github.ref }}
+  group: ancall-next-apk-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -63,10 +63,10 @@ jobs:
           export SHERPA_ONNX_ENABLE_SPEAKER_DIARIZATION=OFF
           ./build-apk-kws.sh
 
-      - name: Upload installable ANCALL APKs
+      - name: Upload installable ANCALL Next APK
         uses: actions/upload-artifact@v4
         with:
-          name: ancall-android-apks
+          name: ancall-next-android-apk
           path: apks/*.apk
           if-no-files-found: error
           retention-days: 14
