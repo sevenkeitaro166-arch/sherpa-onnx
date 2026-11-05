@@ -33,7 +33,7 @@
             android:name=".kws.AncallWakeWordService"
             android:description="@string/wake_service_description"
             android:enabled="true"
-            android:exported="true"
+            android:exported="false"
             android:foregroundServiceType="microphone" />
     </application>
 </manifest>
