@@ -1,12 +1,7 @@
 <resources>
-    <string name="app_name">Keyword spotting</string>
-    <string name="hint">Click the Start button to play keyword spotting with Next-gen Kaldi.
-        \n
-        \n\n\n
-        The source code and pre-trained models are publicly available.
-        Please see https://github.com/k2-fsa/sherpa-onnx for details.
-    </string>
-    <string name="keyword_hint">Input your keywords here, one keyword per line.\nTwo example keywords are given below:\n\nn ǐ h ǎo @你好\nd àn g ē d àn g ē @蛋哥蛋哥</string>
-    <string name="start">Start</string>
-    <string name="stop">Stop</string>
+    <string name="app_name">ANCALL</string>
+    <string name="hint">Tap Start to let ANCALL listen for “Hey ANCALL”. When it hears you, it will launch your existing voice assistant in Termux.</string>
+    <string name="start">Start listening</string>
+    <string name="stop">Stop listening</string>
+    <string name="wake_service_description">Listens for the Hey ANCALL wake phrase while the foreground service is active.</string>
 </resources>
