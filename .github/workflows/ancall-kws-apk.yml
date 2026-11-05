@@ -66,7 +66,7 @@ jobs:
       - name: Upload unsigned APKs
         uses: actions/upload-artifact@v4
         with:
-          name: ancall-sherpa-kws-unsigned-apks
+          name: ancall-android-apks
           path: apks/*.apk
           if-no-files-found: error
           retention-days: 14
