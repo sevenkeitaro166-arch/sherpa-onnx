@@ -102,6 +102,16 @@ if [ ! -d ./android/SherpaOnnxKws/app/src/main/assets/$repo ]; then
   rm ${repo}.tar.bz2
 
   pushd $repo
+  # Build the ANCALL English wake phrase into the model's default keyword file.
+  printf 'HEY ANCALL :1.5 #0.4\\n' > keywords_raw.txt
+  python3 ../scripts/text2token.py \\
+    --text keywords_raw.txt \\
+    --tokens tokens.txt \\
+    --tokens-type bpe \\
+    --bpe-model bpe.model \\
+    --output keywords.txt
+  echo "Generated ANCALL keyword tokens:"
+  cat keywords.txt
   rm bpe.model
   rm keywords_raw.txt
   rm *.int8.onnx
