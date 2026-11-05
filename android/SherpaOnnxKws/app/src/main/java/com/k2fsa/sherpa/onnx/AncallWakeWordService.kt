@@ -136,7 +136,7 @@ class AncallWakeWordService : Service() {
     private fun launchTermuxAssistant() {
         try {
             val command = "python ~/ancall-android/voice/assistant.py; " +
-                "am startservice -n com.k2fsa.sherpa.onnx/.kws.AncallWakeWordService " +
+                "am startservice -n com.ancall.voice/com.k2fsa.sherpa.onnx.kws.AncallWakeWordService " +
                 "-a \"$ACTION_START\""
             val run = Intent("com.termux.RUN_COMMAND").apply {
                 component = ComponentName("com.termux", "com.termux.app.RunCommandService")
