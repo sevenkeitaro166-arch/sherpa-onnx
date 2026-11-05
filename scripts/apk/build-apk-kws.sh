@@ -104,7 +104,7 @@ if [ ! -d ./android/SherpaOnnxKws/app/src/main/assets/$repo ]; then
   pushd $repo
   # Build the ANCALL English wake phrase into the model's default keyword file.
   printf 'HEY ANCALL :1.5 #0.4\\n' > keywords_raw.txt
-  python3 ../scripts/text2token.py \\
+  python3 scripts/text2token.py \\
     --text keywords_raw.txt \\
     --tokens tokens.txt \\
     --tokens-type bpe \\
