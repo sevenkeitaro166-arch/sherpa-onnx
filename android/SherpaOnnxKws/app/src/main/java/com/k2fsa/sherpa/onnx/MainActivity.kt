@@ -13,6 +13,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
 private const val REQUEST_AUDIO_PERMISSION = 200
+private const val ACTION_RESUME_FROM_TERMUX = "com.ancall.action.RESUME_WAKE_LISTENER"
 
 class MainActivity : AppCompatActivity() {
     private lateinit var recordButton: Button
@@ -22,52 +23,50 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
         recordButton = findViewById(R.id.record_button)
         statusText = findViewById(R.id.my_text)
         statusText.text = getString(R.string.hint)
 
         recordButton.setOnClickListener {
-            if (listenerActive) {
-                stopListener()
-            } else if (hasRequiredPermissions()) {
-                startListener()
-            } else {
-                ActivityCompat.requestPermissions(
-                    this,
-                    requiredPermissions(),
-                    REQUEST_AUDIO_PERMISSION
-                )
-            }
+            if (listenerActive) stopListener()
+            else if (hasRequiredPermissions()) startListener()
+            else requestAudioPermissions()
         }
+
+        if (intent?.action == ACTION_RESUME_FROM_TERMUX) {
+            if (hasRequiredPermissions()) startListener() else requestAudioPermissions()
+        }
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent?.action == ACTION_RESUME_FROM_TERMUX) {
+            if (hasRequiredPermissions()) startListener() else requestAudioPermissions()
+        }
+    }
+
+    private fun requestAudioPermissions() {
+        ActivityCompat.requestPermissions(this, requiredPermissions(), REQUEST_AUDIO_PERMISSION)
     }
 
     private fun requiredPermissions(): Array<String> {
         val result = mutableListOf(Manifest.permission.RECORD_AUDIO)
-        if (Build.VERSION.SDK_INT >= 33) {
-            result.add("android.permission.POST_NOTIFICATIONS")
-        }
+        if (Build.VERSION.SDK_INT >= 33) result.add("android.permission.POST_NOTIFICATIONS")
         return result.toTypedArray()
     }
 
     private fun hasRequiredPermissions(): Boolean =
-        ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.RECORD_AUDIO
-        ) == PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
+            PackageManager.PERMISSION_GRANTED
 
     override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
+        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_AUDIO_PERMISSION) {
-            if (hasRequiredPermissions()) {
-                startListener()
-            } else {
-                statusText.text = "ANCALL needs microphone permission to listen for its wake phrase."
-            }
+            if (hasRequiredPermissions()) startListener()
+            else statusText.text = "ANCALL Next needs microphone permission to listen for its wake phrase."
         }
     }
 
@@ -78,7 +77,7 @@ class MainActivity : AppCompatActivity() {
         ContextCompat.startForegroundService(this, serviceIntent)
         listenerActive = true
         recordButton.setText(R.string.stop)
-        statusText.text = "ANCALL is listening for “Hey ANCALL”. You can leave this screen open or switch apps. Use the notification to stop listening."
+        statusText.text = "ANCALL Next is listening for “Hey ANCALL”. Use the notification to stop listening."
     }
 
     private fun stopListener() {
@@ -88,6 +87,6 @@ class MainActivity : AppCompatActivity() {
         startService(serviceIntent)
         listenerActive = false
         recordButton.setText(R.string.start)
-        statusText.text = "ANCALL listener stopped. Tap Start when you want it to listen again."
+        statusText.text = "ANCALL Next listener stopped. Tap Start when you want it to listen again."
     }
 }
