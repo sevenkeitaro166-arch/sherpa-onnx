@@ -1,5 +1,6 @@
 package com.k2fsa.sherpa.onnx.kws
 
+import com.k2fsa.sherpa.onnx.R
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
