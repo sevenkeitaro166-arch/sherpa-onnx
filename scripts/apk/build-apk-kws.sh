@@ -1,108 +1,34 @@
 #!/usr/bin/env bash
+# ANCALL build: only arm64-v8a is needed for the target Android phone.
+# Set ANDROID_NDK before running this script.
 
-# Please set the environment variable ANDROID_NDK
-# before running this script
-
-# Inside the $ANDROID_NDK directory, you can find a binary ndk-build
-# and some other files like the file "build/cmake/android.toolchain.cmake"
-
-set -e
+set -euo pipefail
 
 log() {
-  # This function is from espnet
-  local fname=${BASH_SOURCE[1]##*/}
-  echo -e "$(date '+%Y-%m-%d %H:%M:%S') (${fname}:${BASH_LINENO[0]}:${FUNCNAME[1]}) $*"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
 }
 
-SHERPA_ONNX_VERSION=$(grep "SHERPA_ONNX_VERSION" ./CMakeLists.txt  | cut -d " " -f 2  | cut -d '"' -f 2)
-
-log "Building keyword spotting APK for sherpa-onnx v${SHERPA_ONNX_VERSION}"
+SHERPA_ONNX_VERSION=$(grep "SHERPA_ONNX_VERSION" ./CMakeLists.txt | cut -d " " -f 2 | cut -d '"' -f 2)
+MODEL_DIR="sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01"
+ASSET_DIR="./android/SherpaOnnxKws/app/src/main/assets/$MODEL_DIR"
+JNI_DIR="./android/SherpaOnnxKws/app/src/main/jniLibs/arm64-v8a"
 
 export SHERPA_ONNX_ENABLE_TTS=OFF
 export SHERPA_ONNX_ENABLE_SPEAKER_DIARIZATION=OFF
 
-log "====================arm64-v8a================="
+log "Building Sherpa-ONNX native libraries for arm64-v8a"
 ./build-android-arm64-v8a.sh
-log "====================armv7-eabi================"
-./build-android-armv7-eabi.sh
-log "====================x86-64===================="
-./build-android-x86-64.sh
-log "====================x86===================="
-./build-android-x86.sh
 
-mkdir -p apks
+mkdir -p apks "$JNI_DIR"
 
-# Download the model
-repo=sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01
+if [ ! -d "$ASSET_DIR" ]; then
+  MODEL_URL="https://github.com/k2-fsa/sherpa-onnx/releases/download/kws-models/$MODEL_DIR.tar.bz2"
+  log "Downloading English GigaSpeech keyword model"
+  curl -fL "$MODEL_URL" -o "$MODEL_DIR.tar.bz2"
+  tar jxf "$MODEL_DIR.tar.bz2"
+  rm "$MODEL_DIR.tar.bz2"
 
-if [ ! -d ./android/SherpaOnnxKws/app/src/main/assets/$repo ]; then
-
-  repo_url=https://github.com/k2-fsa/sherpa-onnx/releases/download/kws-models/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01.tar.bz2
-  log "Start testing ${repo_url}"
-
-  log "Download pretrained model from $repo_url"
-  curl -SL -O $repo_url
-  tar jxvf ${repo}.tar.bz2
-  rm ${repo}.tar.bz2
-
-  pushd $repo
-  rm configuration.json
-  rm keywords_raw.txt
-  rm *.int8.onnx
-  rm README.md
-  rm -rfv test_wavs
-  ls -lh
-  popd
-
-  mv -v $repo ./android/SherpaOnnxKws/app/src/main/assets/
-fi
-
-tree ./android/SherpaOnnxKws/app/src/main/assets/
-
-for arch in arm64-v8a armeabi-v7a x86_64 x86; do
-  log "------------------------------------------------------------"
-  log "build apk for $arch"
-  log "------------------------------------------------------------"
-  src_arch=$arch
-  if [ $arch == "armeabi-v7a" ]; then
-    src_arch=armv7-eabi
-  elif [ $arch == "x86_64" ]; then
-    src_arch=x86-64
-  fi
-
-  ls -lh ./build-android-$src_arch/install/lib/*.so
-
-  cp -v ./build-android-$src_arch/install/lib/*.so ./android/SherpaOnnxKws/app/src/main/jniLibs/$arch/
-
-  pushd ./android/SherpaOnnxKws
-  sed -i.bak s/2048/9012/g ./gradle.properties
-  git diff ./gradle.properties
-  ./gradlew assembleDebug
-  popd
-
-  mv android/SherpaOnnxKws/app/build/outputs/apk/debug/app-debug.apk ./apks/ancall-${SHERPA_ONNX_VERSION}-$arch-kws-zh-wenetspeech-zipformer.apk
-
-  ls -lh apks
-  rm -v ./android/SherpaOnnxKws/app/src/main/jniLibs/$arch/*.so
-done
-
-git checkout .
-
-rm -rf ./android/SherpaOnnxKws/app/src/main/assets/$repo
-
-# English model
-repo=sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01
-
-if [ ! -d ./android/SherpaOnnxKws/app/src/main/assets/$repo ]; then
-  repo_url=https://github.com/k2-fsa/sherpa-onnx/releases/download/kws-models/sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01.tar.bz2
-  log "Start testing ${repo_url}"
-  log "Download pretrained model from $repo_url"
-  curl -SL -O $repo_url
-  tar jxvf ${repo}.tar.bz2
-  rm ${repo}.tar.bz2
-
-  pushd $repo
-  # Build the ANCALL English wake phrase into the model's default keyword file.
+  pushd "$MODEL_DIR"
   printf 'HEY ANCALL :1.5 #0.4\n' > keywords_raw.txt
   python3 ../scripts/text2token.py \
     --text keywords_raw.txt \
@@ -110,52 +36,31 @@ if [ ! -d ./android/SherpaOnnxKws/app/src/main/assets/$repo ]; then
     --tokens-type bpe \
     --bpe-model bpe.model \
     --output keywords.txt
-  echo "Generated ANCALL keyword tokens:"
+  log "Generated ANCALL keyword tokens:"
   cat keywords.txt
+
   rm bpe.model
   rm keywords_raw.txt
-  rm *.int8.onnx
-  rm README.md
-  rm -rfv test_wavs
-  ls -lh
+  rm -f *.int8.onnx README.md
+  rm -rf test_wavs
   popd
 
-  mv -v $repo ./android/SherpaOnnxKws/app/src/main/assets/
+  mv "$MODEL_DIR" "$ASSET_DIR"
 fi
 
-tree ./android/SherpaOnnxKws/app/src/main/assets/
+log "Copying arm64 native libraries into the Android app"
+cp -v ./build-android-arm64-v8a/install/lib/*.so "$JNI_DIR/"
 
-pushd android/SherpaOnnxKws/app/src/main/java/com/k2fsa/sherpa/onnx
-sed -i.bak s/"type = 0"/"type = 1"/ ./MainActivity.kt
-git diff
+pushd android/SherpaOnnxKws
+sed -i.bak 's/2048/9012/g' ./gradle.properties
+./gradlew assembleDebug
 popd
 
-for arch in arm64-v8a armeabi-v7a x86_64 x86; do
-  log "------------------------------------------------------------"
-  log "build apk for $arch"
-  log "------------------------------------------------------------"
-  src_arch=$arch
-  if [ $arch == "armeabi-v7a" ]; then
-    src_arch=armv7-eabi
-  elif [ $arch == "x86_64" ]; then
-    src_arch=x86-64
-  fi
+APK="./android/SherpaOnnxKws/app/build/outputs/apk/debug/app-debug.apk"
+test -f "$APK"
+OUTPUT="./apks/ancall-${SHERPA_ONNX_VERSION}-arm64-v8a-hey-ancall.apk"
+mv "$APK" "$OUTPUT"
+rm -f "$JNI_DIR"/*.so
 
-  ls -lh ./build-android-$src_arch/install/lib/*.so
-
-  cp -v ./build-android-$src_arch/install/lib/*.so ./android/SherpaOnnxKws/app/src/main/jniLibs/$arch/
-
-  pushd ./android/SherpaOnnxKws
-  sed -i.bak s/2048/9012/g ./gradle.properties
-  git diff ./gradle.properties
-  ./gradlew assembleDebug
-  popd
-
-  mv android/SherpaOnnxKws/app/build/outputs/apk/debug/app-debug.apk ./apks/ancall-${SHERPA_ONNX_VERSION}-$arch-kws-en-gigaspeech-zipformer.apk
-  ls -lh apks
-  rm -v ./android/SherpaOnnxKws/app/src/main/jniLibs/$arch/*.so
-done
-
-git checkout .
-
-rm -rf ./android/SherpaOnnxKws/app/src/main/assets/$repo
+log "Build complete:"
+ls -lh "$OUTPUT"
